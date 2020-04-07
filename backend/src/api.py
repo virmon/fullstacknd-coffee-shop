@@ -16,7 +16,7 @@ CORS(app)
 !! NOTE THIS WILL DROP ALL RECORDS AND START YOUR DB FROM SCRATCH
 !! NOTE THIS MUST BE UNCOMMENTED ON FIRST RUN
 '''
-# db_drop_and_create_all()
+db_drop_and_create_all()
 
 ## ROUTES
 '''
@@ -28,12 +28,18 @@ CORS(app)
         or appropriate status code indicating reason for failure
 '''
 @app.route('/drinks', methods=['GET'])
-def get_drinks():
-    drinks = Drink.query.all()
-    return jsonify({
-        'success': True,
-        'drinks': drinks.short()
-    })
+def short_drinks():
+    data = Drink.query.all()
+
+    if data is None:
+        abort(404)
+    else:
+        drinks = [drink.short() for drink in data]
+
+        return jsonify({
+            'success': True,
+            'drinks': drinks
+        }), 200
 
 '''
 @TODO implement endpoint
@@ -43,14 +49,20 @@ def get_drinks():
     returns status code 200 and json {"success": True, "drinks": drinks} where drinks is the list of drinks
         or appropriate status code indicating reason for failure
 '''
-@app.route('/drinks-detail', methods=['GET'])
+@app.route('/drinks-detail')
 @requires_auth('get:drinks-detail')
-def get_drinks_detail():
+def get_drinks_detail(jwt):
     drinks = Drink.query.all()
+
+    if drinks is None:
+        abort(404)
+    else:
+        drinks = [drink.long() for drink in drinks]
+
     return jsonify({
         'success': True,
-        'drinks': drinks.long()
-    })
+        'drinks': drinks
+    }), 200
 
 '''
 @TODO implement endpoint
@@ -63,13 +75,24 @@ def get_drinks_detail():
 '''
 @app.route('/drinks', methods=['POST'])
 @requires_auth('post:drinks')
-def post_drink(title, recipie):
-    drink = Drink(title=title, recipe=recipie)
-    drink.insert()
-    return jsonify({
-        'success': True,
-        'drinks': drink.long()
-    })
+def post_drink(jwt):
+    data = request.get_json()
+
+    title = data.get('title')
+    recipe = data.get('recipe')
+
+    if 'title' in data and 'recipe' in data:
+        if title != '' and recipe != '':
+            drink = Drink(title=title, recipe=json.dumps(recipe))
+            drink.insert()
+
+            return jsonify({
+                'success': True,
+                'drinks': drink.long()
+            }), 200
+    else:
+        abort(404)
+
 
 '''
 @TODO implement endpoint
@@ -84,19 +107,23 @@ def post_drink(title, recipie):
 '''
 @app.route('/drinks/<int:id>', methods=['PATCH'])
 @requires_auth('patch:drinks')
-def update_drink(id, title, recipie):
-    drink = Drink.query.filter(Drink.id == id)
+def update_drink(jwt, id):
+    post = request.get_json()
+
+    drink = Drink.query.filter(Drink.id == id).one_or_none()
+
     if drink is None:
         abort(404)
     else:
-        drink.title = title
-        drink.recipe = recipie
+        drink.title = post.get('title')
+        drink.recipie = json.dumps(post.get('recipie'))
+
         drink.update()
 
     return jsonify({
         'success': True,
-        'drinks': drink.long()
-    })
+        'drinks': [drink.long()]
+    }), 200
 
 '''
 @TODO implement endpoint
@@ -110,17 +137,18 @@ def update_drink(id, title, recipie):
 '''
 @app.route('/drinks/<int:id>', methods=['DELETE'])
 @requires_auth('delete:drinks')
-def delete_drink(id):
-    drink = Drink.query.filter(Drink.id == id)
+def delete_drink(jwt, id):
+    drink = Drink.query.filter(Drink.id == id).one_or_none()
+
     if drink is None:
         abort(404)
     else:
-        drink.delete(id)
+        drink.delete()
 
     return jsonify({
         'success': True,
         'delete': id
-    })
+    }), 200
 
 ## Error Handling
 '''
@@ -163,7 +191,8 @@ def not_found(error):
 '''
 @app.errorhandler(401)
 def unauthorized(error):
-    raise AuthError({
-                    'code': 'invalid_header',
-                    'description': 'Unable to find the appropriate key.'
-                    }, 401)
+    return jsonify({
+                    "success": False, 
+                    "error": 401,
+                    "message": "unauthorized"
+                    }), 401
