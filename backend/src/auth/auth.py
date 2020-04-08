@@ -23,7 +23,6 @@ class AuthError(Exception):
 ## Auth Header
 
 '''
-@TODO implement get_token_auth_header() method
     it should attempt to get the header from the request
         it should raise an AuthError if no header is present
     it should attempt to split bearer and the token
@@ -61,7 +60,6 @@ def get_token_auth_header():
     return token
 
 '''
-@TODO implement check_permissions(permission, payload) method
     @INPUTS
         permission: string permission (i.e. 'post:drink')
         payload: decoded jwt payload
@@ -71,25 +69,28 @@ def get_token_auth_header():
     it should raise an AuthError if the requested permission string is not in the payload permissions array
     return true otherwise
 '''
+
+
 def check_permissions(permission, payload):
-    if 'permissions' not in payload:
-        # raise AuthError({
-        #     'code': 'invalid_claims',
-        #     'description': 'Permissions not included in JWT.'
-        # }, 400)
-        abort(400)
-
-    if permission not in payload['permissions']:
-        # raise AuthError({
-        #     'code': 'unauthorized',
-        #     'description': 'Permission not found.'
-        # }, 403)
-        abort(401)
-
-    return True
+    if payload.get('permissions'):
+        token_scopes = payload.get("permissions")
+        # try:
+        if (permission not in token_scopes):
+            raise AuthError({
+                'code': 'invalid_permissions',
+                'description': 'User does not have enough privileges'
+            }, 401)
+        else:
+            return True
+        # except:
+        #     abort(401)
+    else:
+        raise AuthError({
+            'code': 'invalid_header',
+            'description': 'User does not have any roles attached'
+        }, 401)
 
 '''
-@TODO implement verify_decode_jwt(token) method
     @INPUTS
         token: a json web token (string)
 
@@ -165,7 +166,6 @@ def verify_decode_jwt(token):
     }, 400)
 
 '''
-@TODO implement @requires_auth(permission) decorator method
     @INPUTS
         permission: string permission (i.e. 'post:drink')
 
