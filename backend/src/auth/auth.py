@@ -74,16 +74,16 @@ def get_token_auth_header():
 def check_permissions(permission, payload):
     if payload.get('permissions'):
         token_scopes = payload.get("permissions")
-        # try:
-        if (permission not in token_scopes):
-            raise AuthError({
-                'code': 'invalid_permissions',
-                'description': 'User does not have enough privileges'
-            }, 401)
-        else:
-            return True
-        # except:
-        #     abort(401)
+        try:
+            if (permission not in token_scopes):
+                raise AuthError({
+                    'code': 'invalid_permissions',
+                    'description': 'User does not have enough privileges'
+                }, 401)
+            else:
+                return True
+        except:
+            abort(401)
     else:
         raise AuthError({
             'code': 'invalid_header',
